@@ -1,0 +1,199 @@
+#==============================================SleepStudyData==========================================
+setwd("C:/Users/Start/OneDrive/Desktop/stat")
+data <- read.csv(file="SleepStudyData.csv",head=TRUE, stringsAsFactors=FALSE, sep=",")
+data <- na.omit(data)
+data[data$Enough=="Yes",]$Enough <- 1
+data[data$Enough=="No",]$Enough <- 0
+data$Enough <- as.factor(data$Enough)
+data$Enough
+data[data$Breakfast=="Yes",]$Breakfast <- 1
+data[data$Breakfast=="No",]$Breakfast <- 0
+data$Breakfast <- as.factor(data$Breakfast)
+
+data[data$PhoneTime=="Yes",]$PhoneTime <- 1
+data[data$PhoneTime=="No",]$PhoneTime<- 0
+data$PhoneTime <- as.factor(data$PhoneTime)
+
+data[data$PhoneReach=="Yes",]$PhoneReach <- 1
+data[data$PhoneReach=="No",]$PhoneReach<- 0
+data$PhoneReach <- as.factor(data$PhoneReach)
+data$PhoneReach
+#BASIC
+summary(data$Breakfast)
+summary(data$PhoneReach)
+summary(data$PhoneTime)
+summary(data$Hours)
+
+summary(data$Enough)
+
+quantile(data$Hours,1/4, na.rm = TRUE)
+quantile(data$Hours,3/4, na.rm = TRUE)
+length(data[data$Hours == 6,]$Hours)
+length(data[data$Hours == 7,]$Hours)
+
+summary(data[data$Enough=="1",]$Hours)
+summary(data[data$Enough=="0",]$Hours)
+
+##############################################ADVANCED####################################################
+#ANOVA
+m1 <- aov(data$Hours ~ data$PhoneReach * data$PhoneTime * data$Breakfast, data= data)
+summary(m1)
+
+#Remove the 3-way interaction. Increases the error
+m2 <- update(m1, .~. -data$PhoneReach:data$PhoneTime:data$Breakfast)
+summary(m2)
+
+anova(m1,m2)
+
+#Interaction Plot
+x_binary <- c(0,1)
+breakfast <- c(as.numeric(tapply(data$Hours,data$Breakfast,mean, na.rm=TRUE)))
+reach <- c(as.numeric(tapply(data$Hours,data$PhoneReach,mean, na.rm=TRUE)))
+within30 <- c(as.numeric(tapply(data$Hours,data$PhoneTime,mean, na.rm=TRUE)))
+
+plot(x_binary, breakfast, xlab = "Response: 0 = No, 1 = Yes", ylab = "Average Hours of Sleep", main= "Interaction Plot", col="orange",type = 'o',pch="+", lty = 1, ylim = c(6,7))
+points(x_binary, reach, col="green",pch="*")
+lines(x_binary, reach, col="green",lty=1)
+
+points(x_binary,within30,col='blue')
+lines(x_binary, within30, col='blue',lty=1)
+legend(0,7.03,legend=c("Breakfast","Phone within Reach", "30minutes of Phone Time"),col=c("orange","green","blue"),pch=c("+","*","o"))
+
+#The effect of 30mins phone time and breakfast depend if the phone is within reach
+YesReach <- data[data$PhoneReach=="1",]
+NoReach <- data[data$PhoneReach=="0",]
+
+m3 <- aov(YesReach$Hours ~ YesReach$Breakfast * YesReach$PhoneTime)
+summary(m3)
+m4 <- aov(NoReach$Hours ~ NoReach$Breakfast * NoReach$PhoneTime)
+summary(m4)
+
+#Phone in reach
+YR_breakfast <- c(as.numeric(tapply(YesReach$Hours,YesReach$Breakfast,mean, na.rm=TRUE)))
+YR_within30 <- c(as.numeric(tapply(YesReach$Hours,YesReach$PhoneTime, mean, na.rm=TRUE)))
+plot(x_binary, YR_breakfast, xlab = "Response: 0 = No, 1 = Yes", ylab = "Average Hours of Sleep", main= "Interaction Plot: Phone within Reach", 
+     col="orange",type = 'o',pch="+", lty = 1, ylim = c(6,7))
+points(x_binary,YR_within30,col='blue')
+lines(x_binary, YR_within30, col='blue',lty=1)
+legend(0,7,legend=c("Breakfast","30minutes of Phone Time"),col=c("orange","blue"),pch=c("+","o"))
+#NO INTERACITON
+
+#Phone not in reach 
+NR_breakfast <- c(as.numeric(tapply(NoReach$Hours,NoReach$Breakfast, mean, na.rm=TRUE)))
+NR_within30 <- c(as.numeric(tapply(NoReach$Hours,NoReach$PhoneTime, mean, na.rm=TRUE)))
+plot(x_binary, NR_breakfast, xlab = "Response: 0 = No, 1 = Yes", ylab = "Average Hours of Sleep", main= "Interaction Plot: Phone not in Reach", 
+     col="orange",type = 'o',pch="+", lty = 1, ylim = c(5.5,7.25))
+points(x_binary,NR_within30,col='blue')
+lines(x_binary, NR_within30, col='blue',lty=1)
+legend(0,7.2,legend=c("Breakfast","30minutes of Phone Time"),col=c("orange","blue"),pch=c("+","o"))
+#YES INTERACTION
+
+
+#No relationship
+chisq.test(data$PhoneReach,data$Hours)
+chisq.test(data$Breakfast,data$Tired)
+chisq.test(data$Breakfast,data$Enough)
+chisq.test(data$Hours,data$Breakfast)
+chisq.test(data$PhoneReach,data$PhoneTime)
+chisq.test(data$Breakfast,data$PhoneReach)
+
+#There's a relationship. Those who used their phone within 30minutes of sleeping and Hours of Sleep
+chisq.test(data$PhoneTime,data$Hours)
+chisq.test(data$Hours,data$Enough)
+chisq.test(data$Breakfast,data$PhoneReach)
+
+Yes_Enough <- data[data$Enough == 1,]
+No_Enough <- data[data$Enough == 0,]
+summary(Yes_Enough$Hours)
+summary(No_Enough$Hours)
+
+Hours <- as.numeric(paste(data$Hours))
+Enough <- as.numeric(paste(data$Enough))
+Breakfast <- as.numeric(paste(data$Breakfast))
+Phone_Time <- as.numeric(paste(data$PhoneTime))
+Phone_Reach <- as.numeric(paste(data$PhoneReach))
+
+
+#################################################LOG MODEL 1#######################################
+logistic_lite <- glm(Enough ~ Hours, data = data, family = binomial)
+summary(logistic_lite)
+#There is statistical significance
+#b1 = 0.7425x, b0=  - 5.7466
+LL_fitted <- (exp(-5.7466+0.7425*Hours))/(1+exp(-5.7466+0.7425*Hours))
+LL_fitted
+data$LLfitted <- ifelse((LL_fitted >= 0.50), "1",
+                 ifelse((LL_fitted < 0.50), "0",""))
+table(data$LLfitted == data$Enough)
+#72% prediction accuracy!!
+
+#For plotting purposes#
+newdat1 <- data.frame(hour=seq(2,10,len=102))
+LL_pred <- (exp(-5.7466+0.7425*newdat1$hour))/(1+exp(-5.7466+0.7425*newdat1$hour))
+newdat1$vs = predict(logistic_lite,newdata=newdat1,type="response") 
+# draws a curve based on prediction from logistic regression model, NOT WORKING. DO NOT USE, just to use newdat1$hour
+
+##################################################LOG MODEL 2###############################################
+logistic <- glm(data$Enough ~ data$Hours + data$Breakfast + data$PhoneTime + data$PhoneReach, data = data, family = "binomial")
+summary(logistic)
+#b1's = 0.7406x1 + 0.2241x2 - 0.4758x3 - 0.0003x4. bo =  - 5.4755
+length(Hours)
+ones <- matrix(1, nrow=length(Hours),ncol=1)
+zeroes <- matrix(0, nrow=length(Hours),ncol=1)
+x_mat <- matrix(c(ones, Hours, Breakfast, Phone_Time, Phone_Reach), nrow=102, ncol=5)
+dim(x_mat)
+b_mat <- matrix(c(-5.4755, 0.7406, 0.2241, -0.4758, -0.0003), nrow=5, ncol=1)
+b_mat
+L_fitted <- (exp(x_mat%*%b_mat))/(1+exp(x_mat%*%b_mat))
+L_fitted
+data$Lfitted <- ifelse((L_fitted >= 0.50), "1",
+                       ifelse((L_fitted < 0.50), "0",""))
+table(data$Lfitted == data$Enough)
+#70% prediction accuracy
+x_pred <- matrix(c(ones, newdat1$hour, ones, ones, ones), nrow=102, ncol=5)
+x_pred2 <- matrix(c(ones, newdat1$hour, zeroes, zeroes, zeroes), nrow=102, ncol=5)
+#can't plot since it'd be 5 dimensional...but here it is with varying hours while holding the other values constant =1
+L_pred <- (exp(x_pred%*%b_mat))/(1+exp(x_pred%*%b_mat))
+L_pred2 <- (exp(x_pred2%*%b_mat))/(1+exp(x_pred2%*%b_mat))
+#plot(L_pred~newdat1$hour)
+#plot(L_pred2~newdat1$hour)
+plot(Enough~Hours, main = "Logistic Model Comparisons", ylab = "Probability of Enough Sleep",pch = 16)
+lines(newdat1$hour[order(newdat1$hour)], L_pred[order(newdat1$hour)], col = "limegreen", lwd =2)
+lines(newdat1$hour[order(newdat1$hour)], L_pred2[order(newdat1$hour)], col = "forestgreen", lwd =2)
+lines(newdat1$hour[order(newdat1$hour)], LL_pred[order(newdat1$hour)], col = "blue", lty=5, lwd =2)
+legend(2,1,legend=c("Multi w/ X's=0","Multi w/X's=1","Simple"),col=c("forestgreen","limegreen","blue"),pch=c("-","-","-"))
+#Simple logistic model is VERY close to the Multiple Logistic model when X's=1
+
+plot(residuals(logistic,type="pearson"))
+#sum of squared pearson residuals = chi square statistic for the Pearson goodness of fit!
+Pearson_L <- sum((residuals(logistic,type="pearson"))^2)
+qchisq(0.95,df=97)
+
+plot(residuals(logistic_lite, type="pearson"))
+Pearson_LL <- sum((residuals(logistic_lite,type="pearson"))^2)
+qchisq(0.95,df=100)
+
+#Pearson chi square
+pchisq(Pearson_L, df = 97, lower.tail=FALSE)
+pchisq(Pearson_LL, df = 100, lower.tail=FALSE)
+
+#Chi square using the Deviance goodness of fit
+pchisq(logistic$deviance, df = logistic$df.residual, lower.tail=FALSE)
+pchisq(logistic_lite$deviance, df = logistic_lite$df.residual, lower.tail=FALSE)
+
+#install.packages("ggplot2")
+library(ggplot2)
+resid(logistic)
+plot(logistic)
+#Those who used their phone within 30 minutes of falling asleep slept more by about 30 minutes
+
+logistic2 <- glm(data$PhoneReach ~ data$Hours + data$Breakfast + data$PhoneTime, data = data, family = "binomial")
+summary(logistic2)
+
+logistic3 <- glm(data$PhoneTime ~ data$Hours + data$Enough + data$PhoneReach + data$Breakfast, family = "binomial")
+summary(logistic3)
+
+linear <- glm(data$Hours ~ data$Enough + data$Breakfast + data$PhoneTime + data$PhoneReach, data = data, family = "linear")
+summary(linear)
+
+poisson <- glm(data$Hours ~ data$Enough + data$Breakfast + data$PhoneTime + data$PhoneReach, data = data, family = "poisson")
+summary(poisson)
