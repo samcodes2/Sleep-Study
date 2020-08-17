@@ -5,7 +5,7 @@ data <- na.omit(data)
 data[data$Enough=="Yes",]$Enough <- 1
 data[data$Enough=="No",]$Enough <- 0
 data$Enough <- as.factor(data$Enough)
-data$Enough
+
 data[data$Breakfast=="Yes",]$Breakfast <- 1
 data[data$Breakfast=="No",]$Breakfast <- 0
 data$Breakfast <- as.factor(data$Breakfast)
@@ -24,7 +24,7 @@ summary(data$PhoneReach)
 summary(data$PhoneTime)
 summary(data$Hours)
 
-summary(data$Enough)
+(summary(data$Enough))
 
 quantile(data$Hours,1/4, na.rm = TRUE)
 quantile(data$Hours,3/4, na.rm = TRUE)
@@ -112,7 +112,7 @@ Enough <- as.numeric(paste(data$Enough))
 Breakfast <- as.numeric(paste(data$Breakfast))
 Phone_Time <- as.numeric(paste(data$PhoneTime))
 Phone_Reach <- as.numeric(paste(data$PhoneReach))
-
+hist(Enough,breaks=2, main = "Enough Sleep?",xlab = "Response", xlim = c(0,1), ylim = c(0,70),labels=TRUE)
 
 #################################################LOG MODEL 1#######################################
 logistic_lite <- glm(Enough ~ Hours, data = data, family = binomial)
@@ -121,6 +121,9 @@ summary(logistic_lite)
 #b1 = 0.7425x, b0=  - 5.7466
 LL_fitted <- (exp(-5.7466+0.7425*Hours))/(1+exp(-5.7466+0.7425*Hours))
 LL_fitted
+data$Hours
+range(LL_fitted)
+range(L_fitted)
 data$LLfitted <- ifelse((LL_fitted >= 0.50), "1",
                  ifelse((LL_fitted < 0.50), "0",""))
 table(data$LLfitted == data$Enough)
@@ -129,11 +132,15 @@ table(data$LLfitted == data$Enough)
 #For plotting purposes#
 newdat1 <- data.frame(hour=seq(2,10,len=102))
 LL_pred <- (exp(-5.7466+0.7425*newdat1$hour))/(1+exp(-5.7466+0.7425*newdat1$hour))
+LL_pred
+newdat1$hour[74]
 newdat1$vs = predict(logistic_lite,newdata=newdat1,type="response") 
 # draws a curve based on prediction from logistic regression model, NOT WORKING. DO NOT USE, just to use newdat1$hour
+plot(Enough~Hours, main = "Simple Logistic", ylab = "Probability of Enough Sleep",pch = 16)
+lines(newdat1$hour[order(newdat1$hour)], LL_pred[order(newdat1$hour)], col = "blue", lty=1, lwd =2)
 
 ##################################################LOG MODEL 2###############################################
-logistic <- glm(data$Enough ~ data$Hours + data$Breakfast + data$PhoneTime + data$PhoneReach, data = data, family = "binomial")
+logistic <- glm(Enough ~ Hours + Breakfast + PhoneTime + PhoneReach, data = data, family = "binomial")
 summary(logistic)
 #b1's = 0.7406x1 + 0.2241x2 - 0.4758x3 - 0.0003x4. bo =  - 5.4755
 length(Hours)
@@ -157,24 +164,29 @@ L_pred2 <- (exp(x_pred2%*%b_mat))/(1+exp(x_pred2%*%b_mat))
 #plot(L_pred~newdat1$hour)
 #plot(L_pred2~newdat1$hour)
 plot(Enough~Hours, main = "Logistic Model Comparisons", ylab = "Probability of Enough Sleep",pch = 16)
-lines(newdat1$hour[order(newdat1$hour)], L_pred[order(newdat1$hour)], col = "limegreen", lwd =2)
-lines(newdat1$hour[order(newdat1$hour)], L_pred2[order(newdat1$hour)], col = "forestgreen", lwd =2)
+lines(newdat1$hour[order(newdat1$hour)], L_pred[order(newdat1$hour)], col = "darkseagreen1", lwd =2)
+lines(newdat1$hour[order(newdat1$hour)], L_pred2[order(newdat1$hour)], col = "darkgreen", lwd =2)
 lines(newdat1$hour[order(newdat1$hour)], LL_pred[order(newdat1$hour)], col = "blue", lty=5, lwd =2)
-legend(2,1,legend=c("Multi w/ X's=0","Multi w/X's=1","Simple"),col=c("forestgreen","limegreen","blue"),pch=c("-","-","-"))
+#legend(2,1,legend=c("Model A: X's=0","Model A: X's=1"),col=c("darkgreen","darkseagreen1"),pch=c("-","-"))
+legend(2,1,legend=c("Model A: X's=0","Model A: X's=1","Model B: Simple"),col=c("darkgreen","darkseagreen1","blue"),pch=c("-","-","-"))
 #Simple logistic model is VERY close to the Multiple Logistic model when X's=1
 
-plot(residuals(logistic,type="pearson"))
+#MODEL COMPARISONS
+par(mfrow=c(1,2))
+plot(residuals(logistic,type="pearson")~L_fitted, main = "Model A: Multiple",xlab="Predicted probability",ylab="Pearson Residual")
 #sum of squared pearson residuals = chi square statistic for the Pearson goodness of fit!
 Pearson_L <- sum((residuals(logistic,type="pearson"))^2)
 qchisq(0.95,df=97)
 
-plot(residuals(logistic_lite, type="pearson"))
+plot(residuals(logistic_lite, type="pearson")~LL_fitted, main = "Model B: Simple", xlab="Predicted probability",ylab="Pearson Residual")
 Pearson_LL <- sum((residuals(logistic_lite,type="pearson"))^2)
 qchisq(0.95,df=100)
-
+par(mfrow=c(1,1))
 #Pearson chi square
 pchisq(Pearson_L, df = 97, lower.tail=FALSE)
 pchisq(Pearson_LL, df = 100, lower.tail=FALSE)
+Pearson_L
+Pearson_LL
 
 #Chi square using the Deviance goodness of fit
 pchisq(logistic$deviance, df = logistic$df.residual, lower.tail=FALSE)
